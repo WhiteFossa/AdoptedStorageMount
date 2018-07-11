@@ -6,7 +6,7 @@ This is the simple script allowing you to mount removable sdcard, formatted as A
 - Linux PC with installed bindfs package
 
 # Obtaining decryption key
-First, you need to get decryption key. It's stored in /data/misc/vold directory on your phone in file, named like expand_8838e738a18746b6e435bb0d04c15ccd.key If you have multiple files - try it all, until get the correct key (I suppost that it will be in the newest file).
+First, you need to get decryption key. It's stored in `/data/misc/vold` directory on your phone in file, named like `expand_8838e738a18746b6e435bb0d04c15ccd.key`. If you have multiple files - try it all, until get the correct key (I suppose that it will be in the newest file).
 
 I perfer to put phone into TWRP recovery mode and then do `adb pull /data/misc/vold` to get beforementioned directory contents.
 
