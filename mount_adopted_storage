@@ -1,0 +1,82 @@
+#!/bin/bash
+
+# Script for mounting/unmounting android adopted internal storage sdcard
+# 2018-07-11 by White Fossa aka Artyom Vetrov
+# License: GPLv3
+# Inspired by https://nelenkov.blogspot.com/2015/06/decrypting-android-m-adopted-storage.html
+# Usage "mount_adopted_storage mount" for mounting storage, "mount_adopted_storage unmount" for unmount
+# Bindfs is required!
+
+##########################################################################
+#                Set up this variables for your system                   #
+##########################################################################
+# Android_expand partition UUID. Get it via blkid
+partuuid="527086aa-963f-23d7-907a-1c326879092f"
+
+# Decryption key - see https://nelenkov.blogspot.com/2015/06/decrypting-android-m-adopted-storage.html to understand how to get it
+decryptionKey="86f4a430edb8f8ea0d9070f3b3432e4a"
+
+# UID and GID of user who will use sdcard (get it via id -u username and id -g groupname)
+mapUidTo="1000"
+mapGidTo="1000"
+
+# Where to mount sdcard (directory must exist)
+mountPath="/mnt/android"
+
+##########################################################################
+#                    End of user-setupable variables                     #
+##########################################################################
+
+# Cryptodevice with decrypted filesystem name
+cryptodeviceName="AndroidExpandCrypt1"
+
+# Mount storage here (before UID/GID translation)
+tmpMount="/tmp/AndroidExpand1"
+
+# Android uses 1023:1023 for user's filesystem
+mapUidFrom="1023"
+mapGidFrom="1023"
+
+# Action
+action=$1
+
+case $action in
+    mount)
+        # Creating device with decrypted filesystem
+        dmsetup create $cryptodeviceName --table "0 `blockdev --getsize /dev/disk/by-partuuid/$partuuid` crypt aes-cbc-essiv:sha256 $decryptionKey 0 /dev/disk/by-partuuid/$partuuid 0"
+
+        # Creating temporary directory, we will mount here
+        if [ ! -d "$tmpMount" ]; then
+            mkdir $tmpMount
+        fi
+
+
+        # Mounting temporary directory (android uses FF2S)
+        mount /dev/mapper/$cryptodeviceName $tmpMount
+        
+        # Mounting with UID/GID mapping
+        bindfs --map=$mapUidFrom/$mapUidTo:@$mapGidFrom/@$mapGidTo $tmpMount $mountPath
+    ;;
+    
+    unmount)
+        # Umounting bound filesystem
+        umount $mountPath
+    
+        # Unmounting temporary directory
+        umount $tmpMount
+        
+        # NEVER PUT UNCHECKED TEMPORARY MOUNT DIRECTORY CLEARING HERE - in case of umount failure it will lead to all data destruction on sdcard (I had such accident)
+                
+        # Destroying cryptodevice
+        dmsetup remove $cryptodeviceName
+    ;;
+    
+    *)
+        # Wrong action
+        echo "Usage: "mount_adopted_storage mount" for mounting, "mount_adopted_storage unmount" for unmounting"
+esac
+
+
+
+
+exit 0
